@@ -1,0 +1,4 @@
+_OUTDIR histograms/
+_TRAIN True
+_EVALUATE False
+_LUMI 1

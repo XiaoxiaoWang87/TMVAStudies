@@ -1,0 +1,93 @@
+Instructions on TMVAStudies/Train.cxx and TMVAStudies/macros/Plot.cxx
+
+Xiaoxiao Wang,  12/02/2012
+
+=====================================================================
+
+General remarks: 
+	Train.cxx is used to 1) do jet pt re-weighting and write SF to the tree
+			     2) train and test mva
+			     3) evaluate mva
+	Plot.cxx is used to plot the input variable distributions (with/without pt re-weighting)
+
+=====================================================================
+
+Usage and explanations:
+
+---------
+Train.cxx
+---------
+
+        to run:	./train config_.txt
+
+        input root files: sel_jet.root files listed in Files.txt    
+	explanations:   e.g.      105204|/group/atlas/data/D3PDs/BoostedStop/reweight/105204.TTbar_FullHad_McAtNlo_Jimmy/sel_jet.root|AllHad		
+	      		-- ATTENTION: I strongly suggest you use MakeJetTree.cxx to make your own sel_jet.root (which is made from sel.root) and put it in your own directory.
+			   This is because sometimes you will need to write and update sel_jet.root which may cause file corruptions.
+
+        input config file: config_.txt
+        explanations:   _OUTDIR histograms/myDir/          -- output directory
+			_TRAIN True			   -- if True, will train mva; if False won't train
+			_EVALUATE True			   -- if True, will evaluate mva by yourself; if False won't evaluate by yourself (in this case training and testing is
+							      in one step by MVA internal code) 
+			_TRIMMED True			   -- if True, use trimmed jets to train; otherwise use untrimmed jets
+			_TRAIN_BIN incl			   -- here choices are: 250to350, 350to450, 450above      in case you wish to train only a particular pt bin 
+										incl 	in case you wish to train disregard of the pt bin (inclusively)
+										bin	in case you wish to train all pt bins
+			_USE_BIN False			   -- if False, you use the "inclusive pt" training result to evaluate mva (so make sure you did "_TRAIN_BIN incl" before)
+                   					      if True, you use "pt binned" training results to evaluate mva (you will evaluate whatever pt bins you've trained) 
+			_REWEIGHT True			   -- if True, do jet pt re-weighting (to flat spectrum) for training input variables
+							      if False, do not do jet pt re-weighting for training input variables
+			_PLANT False			   -- if False, do not write scale factors of jet pt re-weighting to sel_jet.root files
+							      if True, write scale factors of jet pt re-weighting into sel_jet.root files (only do once!)
+			_LUMI 10			   -- lumi setting not used at the moment
+	
+
+	output files: 1) weight files generated (used to extract output discriminant)     e.g.   weights/TMVAClassification200to350_BDT.class.xml
+		      2) root files where input variable distributions are saved          e.g.   histograms/myDir/Tt.root
+		      3) root files where mva output discriminants are saved   	          e.g.   hisgograms/myDir/MVATtTrimmedJet_Pt>=200 && TrimmedJet_Pt<350.root
+ 	              4) root files produced internally for testing, correlation matrix, etc.     e.g.   hisgograms/myDir/200to350/TMVA.root  (can use to test ROC curve)
+													 hisgograms/myDir/200to350_t/TMVA.root
+
+	descriptions about Train.cxx code:    
+		     readFile(filenames[i])   ---> read in sel_jet.root files and all the signal and background trees in it
+		     reweight(filenames[i])   ---> for each file, each tree, derive the pt-weighting (to flat pt) scale factors.
+						   for now pt spectrums have 50 bins with a range 150 to 800. this may need to be changed later in case the pt spectrum of cerntain samples are very different from ttbar samples and out of the range above. 
+		     plant()	---> write pt re-weighting SFs and Event_Number (used to separate training and evaluating samples) to root files; this should be done only ONCE!
+		     makeHists(filenames[i])  ---> define and make histograms of input variables (both with/without jet pt re-weighting) 
+		     initOutput(filenames[i])/ writeOutput()   ---> initialize or write root files saving input variables
+		     readTrainFile(filenames[i])   --> read all files and all signal and background trees for training (and evaluating) 
+		     setup()   ---> setup training variables, selection cuts here; sainity cut is used to prevent unphysical value of the variables
+ 		     runTraining    ---> actual training and testing code
+					 sel:  for 105200 and 105204 samples, apply Top_Separation cut; for other samples don't
+					 mva_t:   split samples into Event_Number even and odd; even used in training
+					 factory->AddSignalTree:     add signal and background trees
+		     runEvaluating    ---> actual evaluating code
+					   reader->AddVariable:  add all variables used in training
+					   weightfile:  get weight files
+					   reader->BookMVA:  book mva methods according to weightfile
+					   sel:  for 105200 and 105204 samples, apply Top_Separation cut; for other samples don't
+					   mva_e: split samples into Event_Number even and odd; odd used in evaluating
+					   GetMvaValue():  get mva discriminant value 
+					   Write(): for now write mva discriminant to output file when trees are signal/background_tauhad/background
+
+
+
+---------
+Plot.cxx
+---------
+
+	 to run: ./makePlot
+
+	 input root files:	e.g.   histograms/myDir/Tt.root
+
+         output files: 		e.g.   macros/histograms/myDir/
+
+	 descriptions about Plot.cxx code:
+		checkReweight(_files[i])   ---> make plots for each file
+		checkSigBkg()    ---> make plots (e.g. variable distributions in signal and background) for different samples (e.g. Ttbar, W+jets, etc.)  
+
+
+
+
+
